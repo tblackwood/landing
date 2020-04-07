@@ -27,10 +27,73 @@ export default class Editor extends Component{
 
     open(page){
         this.carentPage = `../${page}`;
-        this.iframe.load(this.carentPage, () => {
-            console.log(this.carentPage);
+
+        axios.get(`../${page}`)
+            .then( res=> this.parseStrToDom(res.data))
+            .then(this.wrapTextNodes)
+            .then(dom => {
+                this.virtualDom = dom;
+                return dom;
+            })
+            .then(this.serializeDomToString)
+            .then(html => axios.post("./api/saveTempPage.php", {html}))
+            .then(() => this.iframe.load("../temp.html"))
+            .then(() => this.enableEditing())
+
+    }
+
+    enableEditing(){
+        this.iframe.contentDocument.body.querySelectorAll("text-editor").forEach(element =>{
+            element.contentEditable = "true";
+            element.addEventListener("input", ()=>{
+                this.onTextEdit(element);
+            })
         });
 
+    }
+
+    onTextEdit(element){
+        const id = element.getAttribute("nodeid");
+        this.virtualDom.body.querySelector(`[nodeid="${id}"]`).innerHTML = element.innerHTML;
+    }
+
+    parseStrToDom(str){
+        const parser = new DOMParser();
+        return parser.parseFromString(str, "text/html");
+    }
+
+    wrapTextNodes(dom){
+        const body = dom.body;
+
+        let texNodes = [];
+
+        function recursy(element){
+            element.childNodes.forEach(node => {
+
+                if(node.nodeName === "#text" && node.nodeValue.replace(/\s+/g, "").length > 0){
+                    texNodes.push(node);
+                }else{
+                    recursy(node);
+                }
+            })
+        }
+
+        recursy(body)
+
+        texNodes.forEach( (node, i) =>{
+            const wrapper = dom.createElement('text-editor');
+            node.parentNode.replaceChild(wrapper, node);
+            wrapper.appendChild(node);
+            wrapper.setAttribute("nodeid", i);
+
+        });
+
+        return dom;
+    }
+
+    serializeDomToString(dom){
+       const serializer = new XMLSerializer();
+       return serializer.serializeToString(dom);
     }
     
     loadPageList(){
