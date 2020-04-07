@@ -1,3 +1,4 @@
+import "../../helpers/iframeLoader.js";
 import axios from 'axios';
 import React, {Component} from 'react';
 
@@ -19,14 +20,17 @@ export default class Editor extends Component{
     }
 
     init(page){
-        this.frame = document.querySelector('iframe');
+        this.iframe = document.querySelector('iframe');
         this.open(page);
         this.loadPageList();
     }
 
     open(page){
         this.carentPage = `../${page}`;
-        console.log(this.carentPage);
+        this.iframe.load(this.carentPage, () => {
+            console.log(this.carentPage);
+        });
+
     }
     
     loadPageList(){
